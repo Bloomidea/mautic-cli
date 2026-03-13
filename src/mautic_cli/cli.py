@@ -36,7 +36,7 @@ class MauticCLI(click.Group):
         from mautic_cli.output import get_console
         con = get_console()
         con.print(f"[mautic]{_BANNER}[/mautic]", highlight=False)
-        con.print(f"  [dim]CLI for Mautic marketing automation[/dim]")
+        con.print(f"  [dim]Control Mautic from the command line or any AI coding agent.[/dim]")
         con.print(f"  [dim]Built for humans and AI agents - v{__version__}[/dim]\n")
 
         # Render usage + options + commands without the docstring

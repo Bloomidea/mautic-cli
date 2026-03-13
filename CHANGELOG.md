@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.1.2] - 2026-03-13
+
+### Fixed
+
+- CLI banner now shows updated tagline
+- Version is now derived from pyproject.toml (single source of truth)
+
+---
+
 ## [0.1.1] - 2026-03-13
 
 ### Fixed
