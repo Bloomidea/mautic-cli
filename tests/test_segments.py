@@ -52,7 +52,14 @@ class TestSegments:
 
     @respx.mock
     def test_segment_contacts(self):
-        respx.get("https://mautic.test/api/segments/1/contacts").mock(
+        # First call: fetch segment to get alias
+        respx.get("https://mautic.test/api/segments/1").mock(
+            return_value=httpx.Response(200, json={
+                "list": {"id": 1, "name": "Newsletter", "alias": "newsletter"},
+            })
+        )
+        # Second call: search contacts by segment alias
+        respx.get("https://mautic.test/api/contacts").mock(
             return_value=httpx.Response(200, json={
                 "total": "1",
                 "contacts": {"42": {"id": 42}},

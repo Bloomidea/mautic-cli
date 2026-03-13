@@ -182,7 +182,21 @@ class MauticClient:
             if self.verbose:
                 print(f"<< {response.status_code} (after token refresh)", file=sys.stderr)
 
-        data = response.json()
+        if not response.content:
+            content_type = response.headers.get("content-type", "")
+            raise MauticApiError(
+                message=f"Empty response body (HTTP {response.status_code}). Content-Type: {content_type}",
+                code=response.status_code,
+                error_type="empty_response",
+            )
+        try:
+            data = response.json()
+        except Exception:
+            raise MauticApiError(
+                message=f"Response is not valid JSON (HTTP {response.status_code})",
+                code=response.status_code,
+                error_type="invalid_response",
+            )
         if response.status_code >= 400:
             self._raise_api_error(data, response.status_code)
         return data

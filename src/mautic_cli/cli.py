@@ -167,7 +167,7 @@ def completion(shell):
         if shell == "fish":
             con.print(f"  mautic completion fish > {rc_file}\n")
         else:
-            con.print(f'  echo \'eval "$(mautic completion {shell})"\' >> {rc_file}')
+            con.print(f"  echo '\\neval \"$(mautic completion {shell})\"' >> {rc_file}")
             con.print(f"  source {rc_file}\n")
     else:
         click.echo(result.stdout, nl=False)

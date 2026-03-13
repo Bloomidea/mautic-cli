@@ -52,8 +52,18 @@ def get(mctx: MauticContext, id):
 def contacts(mctx: MauticContext, id, limit):
     """List contacts in a segment."""
     try:
-        data = mctx.client.get(f"/segments/{id}/contacts", params={"limit": limit})
-        mctx.output(data)
+        # Fetch segment to get its alias for search
+        segment_data = mctx.client.get(f"/segments/{id}")
+        segment = segment_data.get("list", {})
+        alias = segment.get("alias", "")
+        if not alias:
+            mctx.output({"total": 0, "contacts": {}})
+            return
+        data = mctx.client.get("/contacts", params={
+            "search": f"segment:{alias}",
+            "limit": limit,
+        })
+        mctx.output_list(data, "contacts")
     except MauticApiError as e:
         mctx.error(e)
         raise SystemExit(1)
