@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.1.3] - 2026-03-13
+
+### Changed
+
+- New CLI banner (slant font, cleaner look)
+- Added hero screenshot to README
+
+---
+
 ## [0.1.2] - 2026-03-13
 
 ### Fixed

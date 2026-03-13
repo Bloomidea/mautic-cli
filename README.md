@@ -10,6 +10,8 @@
 
 [Quick Start](#quick-start) &#183; [Commands](#commands) &#183; [Output Formats](#output-formats)
 
+<img src="assets/screenshot.png" alt="mautic-cli screenshot" width="700">
+
 </div>
 
 ---
