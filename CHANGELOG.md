@@ -1,6 +1,21 @@
 # Changelog
 
-## [0.1.0] - 2026-03-13
+## [0.1.1] - 2026-03-13
+
+### Fixed
+
+- Empty/non-JSON API response handling (Mautic 6.x 401 responses)
+- Shell completion instruction concatenation with rc file
+- Segments contacts endpoint path
+
+### Added
+
+- Phase 2 resources: forms, companies, notes, stages, assets, tags, categories, pages, webhooks, fields, reports, points
+- GitHub Actions CI (tests on Python 3.11/3.12/3.13) and PyPI trusted publishing
+
+---
+
+## [0.1.0] - 2026-03-12
 
 ### Initial Release
 
