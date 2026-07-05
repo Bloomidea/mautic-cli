@@ -23,6 +23,8 @@ Credentials are stored in `~/.mautic-cli/config.json`. Never pass credentials as
 
 **If you get a "No Mautic credentials found" error:** Tell the user to run `mautic auth setup` themselves in their terminal. Do NOT attempt to read, create, or write the config file yourself. The setup command is interactive (prompts for password with hidden input) and must be run by the user directly.
 
+**Exception, when you already hold the credentials:** if you generated the credentials yourself (e.g. you just installed the Mautic instance and created the admin password), create the profile non-interactively by writing `~/.mautic-cli/config.<profile>.json` with `{"base_url": "https://...", "auth_method": "basic", "username": "...", "password": "..."}`, run `chmod 600` on it, and verify with `mautic auth test --profile <profile>`. Flag placement: `auth test` is the exception that takes `--profile` as its own option; every other command uses the GLOBAL flag, placed immediately after `mautic` (e.g. `mautic --profile <profile> forms create ...`, never `mautic forms create --profile <profile>`).
+
 ## Profiles
 
 Multiple Mautic instances are supported via named profiles:
@@ -126,6 +128,8 @@ mautic forms contact-submissions <FORM_ID> <CONTACT_ID>
 mautic forms embed <ID> [--type js|iframe|html]
 mautic forms delete <ID>
 ```
+
+**Mautic 7 form field types:** in `forms create` JSON, radio/checkbox groups are `radiogrp` and `checkboxgrp`, with options in `properties.optionlist.list` (e.g. `{"optionlist": {"list": [{"label": "A", "value": "a"}]}}`). The pre-Mautic-5 names `radiogrouplist`/`checkboxgrouplist` fail with an opaque 500 (Twig `LoaderError` on the field template). Map form fields to contact fields with `"mappedObject": "contact"` + `"mappedField": "<field alias>"` (replaces the old `leadField`).
 
 ### companies
 
