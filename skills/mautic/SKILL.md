@@ -129,7 +129,15 @@ mautic forms embed <ID> [--type js|iframe|html]
 mautic forms delete <ID>
 ```
 
-**Mautic 7 form field types:** in `forms create` JSON, radio/checkbox groups are `radiogrp` and `checkboxgrp`, with options in `properties.optionlist.list` (e.g. `{"optionlist": {"list": [{"label": "A", "value": "a"}]}}`). The pre-Mautic-5 names `radiogrouplist`/`checkboxgrouplist` fail with an opaque 500 (Twig `LoaderError` on the field template). Map form fields to contact fields with `"mappedObject": "contact"` + `"mappedField": "<field alias>"` (replaces the old `leadField`).
+**Mautic 7 choice fields (radiogrp/checkboxgrp), five gotchas verified on 7.1:**
+
+- Field types are `radiogrp`/`checkboxgrp`; the pre-Mautic-5 names `radiogrouplist`/`checkboxgrouplist` fail with an opaque 500 (Twig `LoaderError`; the exception only appears in the Mautic log file, not in the API response).
+- Options go in `properties.optionlist.list` as `[{"label": ..., "value": ...}]`, but they do NOT render unless `properties.syncList` is ALSO defined - always send `"syncList": false` alongside `optionlist`. (Upstream case bug in `group.html.twig`: the render gate checks `optionList` camelCase, the fallback reads `optionlist` lowercase; a defined `syncList` is what opens the gate.)
+- Do not leave `syncList: true` on a field with custom labels: on save it overwrites the `optionlist` labels with the mapped contact field's labels and adds a derived `properties.list` key that a later `forms edit` rejects ("This form should not contain extra fields") - strip `list` from properties before resubmitting.
+- An option with value `0` renders pre-checked when the field has no `defaultValue` (Twig loose `null == 0`); set `"defaultValue": ""` on the field to prevent it.
+- `forms edit` with partial field objects can silently re-order fields; pass an explicit `order` on every field in the payload.
+
+Map form fields to contact fields with `"mappedObject": "contact"` + `"mappedField": "<field alias>"` (replaces the old `leadField`).
 
 ### companies
 
@@ -185,6 +193,8 @@ mautic categories create --json '{"title":"Q1 2026","bundle":"email"}'
 mautic pages list [--search QUERY] [--limit N] [--offset N]
 mautic pages get <ID>
 ```
+
+Page WRITES are not covered by the CLI yet - use the REST API directly (`POST /api/pages/new`, `PATCH /api/pages/<ID>/edit`, with `title` and `customHtml`; set `"template": "blank"` for full custom HTML). Two rendering notes: a `{form=ID}` token inside `customHtml` renders as the JS embed of that form, and non-ASCII characters in CSS `content:` strings get entity-encoded on save and display literally - keep CSS-generated text ASCII-only.
 
 ### webhooks
 
