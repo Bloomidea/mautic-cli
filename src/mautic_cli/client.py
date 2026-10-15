@@ -85,6 +85,14 @@ class MauticClient:
             params["limit"] = min(int(params["limit"]), self.MAX_LIMIT)
         return self._request("GET", path, params=params)
 
+    def fetch(self, path: str, params: dict | None = None) -> dict:
+        """GET that runs even under --dry-run.
+
+        For commands that need the current state to build the request they
+        would send, such as the merging edits.
+        """
+        return self._request("GET", path, live=True, params=dict(params or {}))
+
     def get_all(
         self,
         path: str,
@@ -117,8 +125,8 @@ class MauticClient:
     def patch(self, path: str, json: dict | None = None) -> dict:
         return self._request("PATCH", path, json=json)
 
-    def delete(self, path: str) -> dict:
-        return self._request("DELETE", path)
+    def delete(self, path: str, params: dict | None = None) -> dict:
+        return self._request("DELETE", path, params=params)
 
     def detect_version(self) -> tuple[int, ...]:
         """Detect Mautic version from the mautic-version response header.
@@ -155,9 +163,9 @@ class MauticClient:
                 error_type="version_required",
             )
 
-    def _request(self, method: str, path: str, **kwargs) -> dict:
+    def _request(self, method: str, path: str, live: bool = False, **kwargs) -> dict:
         url = f"{self.api_url}{path}"
-        if self.dry_run:
+        if self.dry_run and not live:
             return {
                 "dry_run": True,
                 "method": method,

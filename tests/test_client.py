@@ -235,6 +235,16 @@ class TestDryRunAndVerbose:
         assert "/contacts" in result["url"]
 
     @respx.mock
+    def test_fetch_runs_under_dry_run(self, basic_creds):
+        route = respx.get("https://mautic.test/api/focus/2").mock(
+            return_value=httpx.Response(200, json={"focus": {"id": 2}})
+        )
+        client = MauticClient(basic_creds, dry_run=True)
+        assert client.fetch("/focus/2") == {"focus": {"id": 2}}
+        assert route.called
+        assert client.patch("/focus/2/edit", json={})["dry_run"] is True
+
+    @respx.mock
     def test_verbose_includes_request_info(self, basic_creds, capsys):
         respx.get("https://mautic.test/api/contacts").mock(
             return_value=httpx.Response(200, json={"total": "0", "contacts": {}})
