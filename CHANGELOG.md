@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.2.0] - 2026-10-15
+
+### Added
+
+- `focus` commands: `list`, `get`, `create`, `edit`, `delete`, `js` (the script a visitor receives, without recording a view) and `stats` (views, clicks and form submissions, with `--since`/`--until`)
+- `focus edit` shortcuts: `--html`, `--css` (sets `properties.content.css`), `--publish`/`--unpublish`
+- `stats [TABLE]` - query any stats table (`email_stats`, `focus_stats`, `page_hits`...) with `--where column=value` (also `!=`, `>`, `>=`, `<`, `<=`), `--order` and `--page-all`
+- `forms fields delete <FORM_ID> <FIELD_ID>...`
+- `--dry-run` on `forms edit` and `focus edit`: prints the changes and sends nothing
+
+### Changed
+
+- `forms edit` no longer sends the JSON as a bare PATCH, which made Mautic reset `postAction` to `return` and renumber the fields in the request. It reads the form, merges the patch (fields and actions by `id`), sends a complete payload with every field in order and its contact mapping, and prints `{"id", "changes"}` from a GET before and a GET after, plus `unexpected` when the server changed a key the patch did not ask for and `not_applied` when a key the patch asked for did not change. `order` on a field moves it to that position. The output used to be the API response.
+- `focus create` and `focus edit` send `htmlMode` as `html_mode`, the only name the API accepts.
+
+---
+
 ## [0.1.5] - 2026-03-17
 
 ### Added
