@@ -81,6 +81,7 @@ _TABLE_FIELDS = {
     "reports": ["id", "name", "system", "source"],
     "points": ["id", "name", "type", "delta", "isPublished"],
     "triggers": ["id", "name", "points", "isPublished"],
+    "focus": ["id", "name", "type", "style", "isPublished"],
 }
 
 # Map singular API response keys to plural resource keys
@@ -102,6 +103,7 @@ _SINGULAR_TO_PLURAL = {
     "report": "reports",
     "point": "points",
     "trigger": "triggers",
+    "focus": "focus",
 }
 
 

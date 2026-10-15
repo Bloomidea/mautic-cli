@@ -20,6 +20,8 @@ def register_commands(cli):
     from mautic_cli.commands.fields import fields
     from mautic_cli.commands.reports import reports
     from mautic_cli.commands.points import points
+    from mautic_cli.commands.focus import focus
+    from mautic_cli.commands.stats import stats
 
     cli.add_command(contacts)
     cli.add_command(segments)
@@ -38,3 +40,5 @@ def register_commands(cli):
     cli.add_command(fields)
     cli.add_command(reports)
     cli.add_command(points)
+    cli.add_command(focus)
+    cli.add_command(stats)
