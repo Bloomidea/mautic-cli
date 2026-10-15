@@ -2,10 +2,11 @@
 name: mautic
 description: >-
   Mautic marketing automation: manage contacts, segments, emails, campaigns,
-  forms, companies, notes, stages, assets, tags, categories, pages, webhooks,
-  fields, reports, and points. Use when the user asks to "list contacts",
-  "send email", "create segment", "check campaign", "search contacts",
-  "add to segment", "list companies", "create webhook", "mautic", or any
+  forms, Focus items (popups), companies, notes, stages, assets, tags,
+  categories, pages, webhooks, fields, reports, points, and stats tables. Use
+  when the user asks to "list contacts", "send email", "create segment",
+  "check campaign", "search contacts", "add to segment", "list companies",
+  "create webhook", "edit the popup", "focus stats", "mautic", or any
   marketing automation task involving Mautic.
 ---
 
@@ -101,6 +102,8 @@ mautic emails send <EMAIL_ID> --contact <CONTACT_ID>
 mautic emails send-to-segment <EMAIL_ID>
 ```
 
+`emails edit` is a plain PATCH. On an email with dynamic content, a PATCH without `dynamicContent` replaces it with Mautic's placeholder ("Dynamic Content 1" / "Default Dynamic Content"), verified on 7.1.1: copy `dynamicContent` from `emails get` into every edit of such an email.
+
 ### campaigns
 
 ```bash
@@ -121,7 +124,8 @@ mautic campaigns remove-contact <CAMPAIGN_ID> <CONTACT_ID>
 mautic forms list [--search QUERY] [--limit N] [--offset N]
 mautic forms get <ID>
 mautic forms create --json '<DATA>'
-mautic forms edit <ID> --json '<DATA>'
+mautic forms edit <ID> --json '<PATCH>' [--dry-run]
+mautic forms fields delete <FORM_ID> <FIELD_ID>...
 mautic forms submissions <ID> [--limit N] [--offset N]
 mautic forms submission <FORM_ID> <SUBMISSION_ID>
 mautic forms contact-submissions <FORM_ID> <CONTACT_ID>
@@ -135,9 +139,53 @@ mautic forms delete <ID>
 - Options go in `properties.optionlist.list` as `[{"label": ..., "value": ...}]`, but they do NOT render unless `properties.syncList` is ALSO defined - always send `"syncList": false` alongside `optionlist`. (Upstream case bug in `group.html.twig`: the render gate checks `optionList` camelCase, the fallback reads `optionlist` lowercase; a defined `syncList` is what opens the gate.)
 - Do not leave `syncList: true` on a field with custom labels: on save it overwrites the `optionlist` labels with the mapped contact field's labels and adds a derived `properties.list` key that a later `forms edit` rejects ("This form should not contain extra fields") - strip `list` from properties before resubmitting.
 - An option with value `0` renders pre-checked when the field has no `defaultValue` (Twig loose `null == 0`); set `"defaultValue": ""` on the field to prevent it.
-- `forms edit` with partial field objects can silently re-order fields; pass an explicit `order` on every field in the payload.
 
 Map form fields to contact fields with `"mappedObject": "contact"` + `"mappedField": "<field alias>"` (replaces the old `leadField`).
+
+**`forms edit` merges, and why it has to.** A raw PATCH to `/forms/{id}/edit` without `postAction` sets it to `return`: the visitor stays on an empty form instead of going to the thank-you page. The fields in a request are renumbered 1..n by their position and their `order` key is ignored, so a request with one field moves it to the top. `forms edit` reads the form, merges the patch (objects key by key, `fields` and `actions` by `id`), and sends every top-level key, plus every field by id in order with its `mappedObject`/`mappedField` whenever the patch has fields. Only the patch:
+
+```bash
+mautic forms edit 5 --json '{"fields":[{"id":3,"label":"Your email"}]}' --dry-run   # see the change first
+mautic forms edit 5 --json '{"fields":[{"id":3,"label":"Your email"}]}'
+mautic forms edit 5 --json '{"fields":[{"id":7,"order":1}]}'                       # move a field to the top
+mautic forms edit 5 --json '{"fields":[{"label":"Phone","type":"tel","order":3}]}' # add a field (no id) in third place
+mautic forms fields delete 5 7                                                      # remove field 7
+```
+
+The output is `{"id", "changes": [{"path", "before", "after"}]}`, from a GET before and a GET after (e.g. `fields[id=3].label`). If `unexpected` appears, the server changed a key the patch did not ask for: report it to the user before doing anything else. If `not_applied` appears, a key in the patch did not change, usually a misspelt or unknown key name. `order` on a field moves it to that position (1 is first). Publish dates go as `YYYY-MM-DD HH:MM`; the ISO format `get` returns is rejected with "Please enter a valid date and time", so the CLI only sends them when the patch sets them. On a field with `syncList: true`, GET returns the option list derived from the contact field, keyed by label, and sending it back fails with a 500; the CLI drops it when you patch that field's `properties`, and the form still renders every option.
+
+### focus
+
+Focus items are Mautic's popups, bars and notifications.
+
+```bash
+mautic focus list [--search QUERY] [--limit N] [--offset N]
+mautic focus get <ID>
+mautic focus create --json '<DATA>'
+mautic focus edit <ID> [--json '<PATCH>'] [--html TEXT|@FILE] [--css TEXT|@FILE] [--publish|--unpublish] [--dry-run]
+mautic focus js <ID>
+mautic focus stats <ID> [--since DATE] [--until DATE]
+mautic focus delete <ID>
+```
+
+- `focus edit` merges like `forms edit`: it reads the item, merges the patch (also inside `properties`), sends the whole item and prints `{"id", "changes"}`, with `unexpected` and `not_applied` as in `forms edit`. Run it with `--dry-run` first and show the user the changes.
+- The custom CSS lives in `properties.content.css` (`--css`). `--html` sets `html` and switches `htmlMode` to `html`, the only mode that renders it.
+- GET returns `htmlMode`, but the API only accepts it as `html_mode`; `htmlMode` in a request is silently ignored. `focus create` and `focus edit` translate it.
+- Do not assume a property exists: `properties.min_page_views` and `frequency: "days"` come from an unmerged Mautic patch (mautic/mautic#17672) and exist only on instances that carry it. Read `focus get` first; the CLI passes unknown properties through untouched.
+- `focus js` prints the script a visitor receives (`POST /focus/{id}/js`), without recording a view or creating a contact: use it to check what is published instead of opening the site.
+- `focus stats` counts the `focus_stats` rows by type: `views`, `clicks`, `submissions` (`--until` is exclusive; dates are UTC). A submission is recorded when the form is actually submitted. The "stop after conversion" cookie, though, is set when the visitor clicks the submit button, before validation: someone who clicks with an empty email and leaves never sees the popup again.
+
+**Layout, verified on 7.1.1.** The Focus is rendered in an iframe whose height is set to the content's height, capped at the window's (`generate.js.twig`). An element that grows to its own aspect ratio, such as an image in a side column, stretches the popup to the full window height; take it out of the flow (`position: absolute` with `object-fit: cover`) so the text sets the height. The content starts with a reset, `.mautic-focus * { all: revert; }`, and `properties.content.css` comes after it: put the styles there, because anything injected before the reset with one class of specificity or less is reverted to browser defaults.
+
+### stats
+
+```bash
+mautic stats                                          # tables and their columns
+mautic stats <TABLE> [--where COL=VAL]... [--order COL[:asc|desc]] [--limit N] [--offset N]
+mautic --page-all stats <TABLE> --where COL=VAL       # every row, NDJSON
+```
+
+`--where` takes `=`, `!=`, `>`, `>=`, `<`, `<=`; repeat it to combine with AND. Useful tables: `email_stats` (sends, reads), `focus_stats`, `form_submissions`, `page_hits`. Sort by `id`, never by a date: on large tables an ORDER BY on a date column times out. The stats API reports a bad column with HTTP 200 and an `errors` key; the CLI turns that into an error and exit code 1.
 
 ### companies
 
@@ -285,11 +333,15 @@ Table/CSV show these fields per resource:
 - **reports**: id, name, system, source
 - **points**: id, name, type, delta, isPublished
 - **triggers**: id, name, points, isPublished
+- **focus**: id, name, type, style, isPublished
 
 ## Safety Rules
 
 > [!CAUTION]
 > **Write commands** (`create`, `edit`, `delete`, `send`, `send-to-segment`, `add-points`, `subtract-points`, `clone`) modify data. Always confirm with the user before executing.
+
+> [!CAUTION]
+> Before `forms edit` or `focus edit` on a live instance, run it with `--dry-run` and show the user the `changes`. After the edit, check that `changes` holds only what was asked and that there is no `unexpected` or `not_applied` key.
 
 > [!CAUTION]
 > `send` and `send-to-segment` send real emails to real people. Double-check the email ID and recipient before executing.

@@ -39,7 +39,9 @@ Mautic-CLI runs on **your local machine** (laptop, desktop, CI server) and conne
 | **Segments** | List, create, edit, delete, add/remove contacts |
 | **Emails** | List, create, edit, send to contact, send to segment |
 | **Campaigns** | List, create, edit, delete, clone (7+), add/remove contacts |
-| **Forms** | List, create, edit, delete, submissions, submission by ID, contact submissions, embed code |
+| **Forms** | List, create, edit that keeps what the patch leaves out, delete, delete fields, submissions, submission by ID, contact submissions, embed code |
+| **Focus** | List, get, create, edit that keeps what the patch leaves out, delete, published JavaScript, views/clicks/submissions |
+| **Stats** | Query any stats table (`email_stats`, `focus_stats`, `page_hits`...) with filters |
 | **Companies** | List, get, create, edit, delete, add/remove contacts |
 | **Notes** | List (per contact), get, create |
 | **Stages** | List, set contact stage |
@@ -144,6 +146,8 @@ mautic forms list
 mautic forms get 1
 mautic forms create --json @form.json
 mautic forms edit 1 --json '{"name":"Updated Form"}'
+mautic forms edit 1 --json '{"fields":[{"id":3,"label":"Your email"}]}' --dry-run
+mautic forms fields delete 1 7 8        # delete fields 7 and 8 from form 1
 mautic forms submissions 1              # list all submissions
 mautic forms submissions 1 --offset 30 # paginate submissions
 mautic forms submission 1 10           # get submission 10 from form 1
@@ -154,6 +158,41 @@ mautic forms embed 1 --type iframe      # iframe only
 mautic forms embed 1 --type html        # raw cached HTML
 mautic forms delete 1
 ```
+
+### Focus
+
+```bash
+mautic --format table focus list
+mautic focus get 2
+mautic focus create --json @focus.json
+mautic focus edit 2 --css @focus.css --dry-run   # show what would change
+mautic focus edit 2 --css @focus.css             # CSS lives in properties.content.css
+mautic focus edit 2 --html @focus.html           # also switches htmlMode to html
+mautic focus edit 2 --json '{"properties":{"timeout":6}}' --publish
+mautic focus js 2                                # the script a visitor receives, without counting a view
+mautic focus stats 2 --since 2026-10-15          # views, clicks, form submissions
+mautic focus delete 2
+```
+
+### Edits that keep what the patch leaves out
+
+A Mautic PATCH is not partial for every field. On a form, a PATCH without `postAction` sets it to `return` (the visitor stays on the form instead of the thank-you page), and the fields in the request are renumbered by their position, so sending one field moves it to the top. `forms edit` and `focus edit` therefore read the item, merge your JSON into it (objects key by key, fields and actions by `id`), send a complete payload and print what changed, from a GET before and a GET after:
+
+```json
+{"id": 5, "changes": [{"path": "fields[id=3].label", "before": "Email", "after": "Your email"}]}
+```
+
+A key the server changed without being asked shows up under `unexpected`, and a key you asked for that did not change (a typo, a name the API does not know) under `not_applied`, each with a warning on stderr. `--dry-run` prints the changes and sends nothing. In `forms edit`, a field or action without an `id` is added; set `order` on a field to move it to that position (1 is first). Publish dates go as `YYYY-MM-DD HH:MM` (`{"publishUp": "2026-10-20 09:00"}`); the ISO format a `get` returns is rejected.
+
+### Stats
+
+```bash
+mautic stats                                    # tables and their columns
+mautic stats email_stats --where email_id=296 --where 'date_sent>=2026-10-15' --limit 50
+mautic --page-all stats focus_stats --where focus_id=2 > focus-2.ndjson
+```
+
+`--where` takes `=`, `!=`, `>`, `>=`, `<`, `<=`. Sort by `id` (`--order id:desc`): sorting a large table by a date times out.
 
 ### Companies
 
